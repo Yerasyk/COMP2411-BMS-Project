@@ -20,21 +20,23 @@ CREATE TABLE IF NOT EXISTS Administrator (
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS Staff (
     Email VARCHAR(320) PRIMARY KEY,
-    FName VARCHAR(255) NOT NULL CHECK (FName GLOB '[a-zA-Z ]*'),
-    LName VARCHAR(255) NOT NULL CHECK (LName GLOB '[a-zA-Z ]*')
+    
 );
 """)
 
+# 15042024193525 + 4random digits
 # Create Banquet Table
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS Banquet (
-    BIN CHAR(18) PRIMARY KEY,
+    BIN CHAR(18) PRIMARY KEY, 
     Name TEXT NOT NULL,
     DateTime DATETIME NOT NULL,
     Quota INTEGER NOT NULL,
     Available BOOLEAN NOT NULL,
     Location TEXT NOT NULL,
-    Address TEXT NOT NULL
+    Address TEXT NOT NULL,
+    Staff_FName VARCHAR(255) NOT NULL CHECK (FName GLOB '[a-zA-Z ]*'),
+    Staff_LName VARCHAR(255) NOT NULL CHECK (LName GLOB '[a-zA-Z ]*')
 );
 """)
 
@@ -43,11 +45,9 @@ cursor.execute("""
 CREATE TABLE IF NOT EXISTS OrganizeBanquet (
     AdminEmail VARCHAR(320) NOT NULL,
     BIN CHAR(18) NOT NULL,
-    StaffEmail VARCHAR(320) NOT NULL,
-    PRIMARY KEY (AdminEmail, BIN, StaffEmail),
+    PRIMARY KEY (AdminEmail, BIN),
     FOREIGN KEY (AdminEmail) REFERENCES Administrator(Email),
     FOREIGN KEY (BIN) REFERENCES Banquet(BIN),
-    FOREIGN KEY (StaffEmail) REFERENCES Staff(Email)
 );
 """)
 
