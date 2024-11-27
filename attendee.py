@@ -13,7 +13,7 @@ def standartName(name):
 def hashingPassw(password):
     return hashlib.sha256(password.encode('utf-8')).hexdigest()
 
-def create_attendee_account():
+def createAttendeeAccount():
     try:
         #Handling inputs
         email=input("Write your email: ").strip()
@@ -87,6 +87,98 @@ def enterAccount():
     except Exception as e:
         return f"An error occurred: {e}"
 
+def showPersonalData():
+    try:
+        global logged_email
+        
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM Attendee WHERE Email = ?;", (logged_email,))
+        attendee = cursor.fetchone()
+
+        print("\nCurrent Data:")
+        column_names = ["Email", "Password", "MobileNumber", "AttendeeType", "Address", "FirstName", "LastName", "Organization"]
+        for i in range(len(column_names)):  
+            print(f"{column_names[i]}: {attendee[i]}")
+       
+        conn.close()
+
+        return attendee
+
+    except Exception as e:
+        return f"An error occurred: {e}"
+
+def updatePersonalData():
+    try:
+        global logged_email
+        
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        attendee=showPersonalData()
+
+        print("\nEnter new values (leave blank to keep the current value):")
+        new_email= input("New Email: ").strip()
+        if new_email:
+            if(isValidEmail(new_email)==None):
+                return "Email address isn't valid."
+        else:
+            new_email=attendee[0]
+
+        new_password = input("New Password: ").strip()
+        if new_password:
+            new_hashed_password=hashingPassw(new_password)
+        else: 
+            new_hashed_password=attendee[1]
+
+        new_mobile_number = input("New Mobile Number (8 digits): ").strip()
+        if new_mobile_number:
+            if not (new_mobile_number.isdigit() and len(new_mobile_number) == 8):
+                return "Mobile number must be 8 digits."
+        else:
+            new_mobile_number =  attendee[2]
+
+        new_attendee_type = input("New Attendee Type (e.g., staff, student, alumni, guest): ").strip()
+        if new_attendee_type==False:
+            new_attendee_type = attendee[3]
+
+        new_address = input("New Address: ").strip()
+        if new_address == False: 
+            new_address = attendee[4]
+
+        new_first_name = input("New First Name: ").strip()
+        if new_first_name:
+            new_first_name = standartName(new_first_name) 
+        else: 
+            new_first_name = attendee[5]
+
+        new_last_name = input("New Last Name: ").strip()
+        if new_last_name:
+            new_last_name = standartName(new_last_name) 
+        else: 
+            new_last_name = attendee[6]
+
+        new_organization = input("New Organization: ").strip()
+        if new_organization==False:
+            new_organization = attendee[7]
+
+        # Update attendee data
+        cursor.execute("""
+        UPDATE Attendee
+        SET Email=?, Password = ?, MobileNumber = ?, AttendeeType = ?, Address = ?, FirstName = ?, LastName = ?, Organization = ?
+        WHERE Email = ?;
+        """, (new_email, new_hashed_password, new_mobile_number, new_attendee_type, new_address, new_first_name, new_last_name, new_organization, logged_email))
+
+        conn.commit()
+        conn.close()
+
+        logged_email=new_email
+        return "Your data has been updated successfully!"
+
+    except Exception as e:
+        return f"An error occurred: {e}"
+
+
 #########################################################################################
 logged_email=None
 
@@ -95,7 +187,7 @@ while(True):
     opt=int(input("\nOptions:\n1. Create account\n2. Enter account\n0. Quit\n"))
     if(opt==1):
         print("Creating acoount...")
-        msg = create_attendee_account()
+        msg = createAttendeeAccount()
         print(msg)
     elif(opt==2):
         print("Entering acoount...")
@@ -106,6 +198,7 @@ while(True):
             print("2. List Banquets")
             print("3. Register")
             print("4. Update personal data")
+            print("5. Show personal data")
             print("0. Quit")
             opt = int(input("Choose an option: "))
             if(opt==0):
@@ -116,6 +209,11 @@ while(True):
                 print("Create staff")
             elif(opt==2):
                 print("create a banquet")
+            elif(opt==4):
+                msg=updatePersonalData()
+                print(msg)
+            elif(opt==5):
+                showPersonalData()
             else:
                 print("Try again!")
     elif(opt==0):
