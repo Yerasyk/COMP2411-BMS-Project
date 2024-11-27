@@ -1,19 +1,13 @@
 import sqlite3;
+import re
+import hashlib
 
+def isValidEmail(email):
+    return re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+$', email)
 
-def sayHi():
-    print("This is attendee")
- 
-# conn = sqlite3.connect('BMS.db')
+def standartName(name):
+    return name.lower().capitalize()
 
-# cursor = conn.cursor()
+def hashingPassw(password):
+    return hashlib.sha256(password.encode('utf-8')).hexdigest()
 
-# cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-# tables = cursor.fetchall()
-
-# print("Tables in the database:")
-# for table in tables:
-#     print(table[0]) 
-
-# conn.commit()
-# conn.close()
