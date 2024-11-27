@@ -1,4 +1,3 @@
-import attendee
 import subprocess
 
 while(True):
@@ -7,7 +6,7 @@ while(True):
     if(opt==1):
         subprocess.run(["python", "admin.py"])
     elif(opt == 2):
-        attendee.sayHi()
+        subprocess.run(["python", "attendee.py"])
     elif(opt == 0):
         exit()
     else:

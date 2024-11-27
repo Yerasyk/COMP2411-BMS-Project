@@ -89,7 +89,7 @@ while(True):
         print("Entering acoount...")
         msg=enterAccount()
         print(msg)
-        while(True):
+        while(logged_email!=None):
             print("\nAdmin Options:")
             print("1. Create a new Staff")
             print("2. Create Banquet")
