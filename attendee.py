@@ -5,7 +5,7 @@ import hashlib
 DB_PATH="BMS.db"
 
 def isValidEmail(email):
-    return re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+$', email)
+    return re.match(r'^.+@.+\..+$', email)
 
 def standartName(name):
     return name.lower().capitalize()
@@ -55,7 +55,7 @@ def createAttendeeAccount():
         return "Error: Attendee with this email already exists."
     except Exception as e:
         return f"An error occurred: {e}"
-
+#Log in to account
 def enterAccount():
     global logged_email
     try:
@@ -178,7 +178,275 @@ def updatePersonalData():
     except Exception as e:
         return f"An error occurred: {e}"
 
+def listBanquets():
+    while(True):
+        opt=int(input("\nMenu of List or Search for Banquets\nOptions:\n1. Listing Registered Banquets\n2. Searching Registered Banquets\n3. Listing Available Banquets\n4. Search Available Banquets\n0. Return to main menu\n"))
+    
+        if(opt==0):
+            return
+        elif(opt==1):
+            listReqBanquet()
+        elif(opt==2):
+            searchReqBanquet()
+        elif(opt==3):
+            listAvaBanquet()
+        elif(opt==4):
+            searchAvaBanquet()
+        else:
+            print("Try again!")
+            
+#attendee get the list of registered banquets             
+def listReqBanquet():
+    try:
+        global logged_email       
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM Register WHERE AttendeeEmail = ?;", (logged_email,))
+        registers = cursor.fetchall()
+        
+        if registers:
+            print(f"------------------------------------\nListing Registered Banquets\nRegisted Banquet of {logged_email}:")
+            for register in registers:
+                binNo, attEmail, mealID, drinkID, tableNo, price = register
+                print(f"BIN: {binNo}, MealID: {mealID}, DrinkID: {drinkID}, Total Price: {price}")
+                
+                cursor.execute("SELECT * FROM Banquet WHERE BIN = ?;", (binNo,))
+                banquet = cursor.fetchone()
+                #for print of banquet info here, I haven't include the contact_first_name and contact_last_name.
+                # And the index of banquet[?] might need to change here
+                print(f"Banquet Name: {banquet[1]}, Date & Time: {banquet[2]}, Location: {banquet[5]}, Address: {banquet[6]}")
+                
+                cursor.execute("SELECT * FROM Meal WHERE MealID = ?;", (mealID,))
+                meal = cursor.fetchone()
+                print(f"Meal type: {meal[2]}, Dish Name: {meal[4]}, Price: {meal[3]}, SpecialCuisine: {meal[5]}")
+                
+                cursor.execute("SELECT * FROM Drink WHERE DrinkID = ?;", (drinkID,))
+                drink = cursor.fetchone()
+                print(f"Drink type: {drink[2]}, Drink Name: {drink[4]}, Price: {drink[3]}, SpecialCuisine: {drink[5]}")
+                
+                cursor.execute("SELECT * FROM Tables WHERE Table_Number = ?;", (tableNo,))
+                table = cursor.fetchone()
+                print(f"Table Number: {tableNo}, Table type: {table[3]}, Seat Quantity: {table[2]}, Price: {table[4]}")               
+        else:
+            print("No registrations found.")
+        conn.close()
 
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        conn.close()
+
+#attendee search for list of registered banquets           
+def searchReqBanquet():
+    crit = int(input("------------------------------------\nSearching Registered Banquets\nSearch options:\n1. Search by date\n2. Search by banquet name\n0. Return to Search Banquets\n"))
+    whereWhat = ""
+    inp = ""
+    if(crit==0):
+        return
+    elif(crit==1):
+        inp = input("Enter Date: ")
+        whereWhat = "DateTime"
+    elif(crit==2):
+        inp = input("Enter Banquet Name: ")
+        whereWhat = "Name"
+    else:
+        print("Try again!")
+           
+    try:
+        global logged_email       
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        #for search using date, 'WHERE Datetime LIKE ???' is used.
+        cursor.execute("SELECT R.BIN, R.MealID, R.DrinkID, R.Table_Number, R.Total_price FROM Banquet B, Register R WHERE R.AttendeeEmail = ? AND B.{} LIKE ? GROUP BY R.BIN;".format(whereWhat), (logged_email, f'%{inp}%'))
+        registers = cursor.fetchall()
+        
+        if registers:
+            print(f"------------------------------------\nRegisted Banquet of {logged_email} Found!:")
+            for register in registers:
+                binNo, mealID, drinkID, tableNo, price = register
+                print(f"BIN: {binNo}, MealID: {mealID}, DrinkID: {drinkID}, Total Price: {price}")
+                
+                cursor.execute("SELECT * FROM Banquet WHERE BIN = ?;", (binNo,))
+                banquet = cursor.fetchone()
+                #for print of banquet info here, I haven't include the contact_first_name and contact_last_name.
+                # And the index of banquet[?] might need to change here
+                print(f"Banquet Name: {banquet[1]}, Date & Time: {banquet[2]}, Location: {banquet[5]}, Address: {banquet[6]}")
+                
+                cursor.execute("SELECT * FROM Meal WHERE MealID = ?;", (mealID,))
+                meal = cursor.fetchone()
+                print(f"Meal type: {meal[2]}, Dish Name: {meal[4]}, Price: {meal[3]}, SpecialCuisine: {meal[5]}")
+                
+                cursor.execute("SELECT * FROM Drink WHERE DrinkID = ?;", (drinkID,))
+                drink = cursor.fetchone()
+                print(f"Drink type: {drink[2]}, Drink Name: {drink[4]}, Price: {drink[3]}, SpecialCuisine: {drink[5]}")
+                
+                cursor.execute("SELECT * FROM Tables WHERE Table_Number = ?;", (tableNo,))
+                table = cursor.fetchone()
+                print(f"Table Number: {tableNo}, Table type: {table[3]}, Seat Quantity: {table[2]}, Price: {table[4]}")
+                
+                #conn.close()
+        else:
+            print("No registrations found.")
+        conn.close()
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        conn.close()
+
+
+#attendee get a list of available banquets, registered or not     
+def listAvaBanquet():
+    try:
+        t = True      
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM Banquet WHERE Available = ?;", (t,))
+        availables = cursor.fetchall()       
+        conn.close()
+        
+        if availables:
+            print(f"------------------------------------\nListing Available Banquets\nAvailable Banquet:")
+            for available in availables:
+                binNo, banqName, datetime, quota, ava, location, address, staff_fname, staff_lname = available
+                print(f"BIN: {binNo}, Banquet Name: {banqName}, Date & Time: {datetime}, "
+                      f"Location: {location}, Address: {address}, Quota: {quota}, "
+                      f"Staff: {staff_fname} {staff_lname}")
+                
+        else:
+            print("No available banquet now, you may check again later.")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        conn.close()
+
+#attendee search for a list of available banquets, registered or not         
+def searchAvaBanquet():
+    crit = int(input("------------------------------------\nSearch Available Banquets\nSearch options:\n1. Search by date\n2. Search by banquet name\n0. Return to Search Banquets\n"))
+    whereWhat = ""
+    inp = ""
+    if(crit==0):
+        return
+    elif(crit==1):
+        inp = input("Enter Date: ")
+        whereWhat = "DateTime"
+    elif(crit==2):
+        inp = input("Enter Banquet Name: ")
+        whereWhat = "Name"
+    else:
+        print("Try again!")
+           
+    try:
+        t = True      
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM Banquet WHERE Available = ? AND {} LIKE ?;".format(whereWhat), (t, f'%{inp}%'))
+        availables = cursor.fetchall()       
+        conn.close()
+        
+        if availables:
+            print(f"------------------------------------\nAvailable Banquet Found!:")
+            for available in availables:
+                binNo, banqName, datetime, quota, ava, location, address = available
+                print(f"BIN: {binNo}, Banquet Name: {banqName}, Date & Time: {datetime}, Location: {location}, Address: {address}, Quota: {quota}")
+                
+        else:
+            print("No available banquet now, you may check again later.")
+
+    except Exception as e:
+        print(f"An error occurred: {e}") 
+    finally:
+        conn.close()
+
+
+def AttendeeRegisterBanquet(): #should be put in attendee.py
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        BIN = input("Enter Banquet ID:").strip()
+        
+        cursor.execute("SELECT * FROM Meal WHERE BIN = ?;", (BIN,))
+        meal = cursor.fetchall()
+        print("\nMeal Options:")
+        print("BIN\tMealID\tType\tPrice\tDishName\tSpecialCuisine")
+        for row in meal:
+            for attribute in row:
+                print(attribute, end="\t")
+            print()
+        MealValidFlag = False
+        MealID = None
+        while(MealValidFlag == False):
+            MealID = int(input("Enter MealID:").strip())
+            for row in meal:
+                if(row[1] == MealID):
+                    MealValidFlag = True
+                    break
+            if(MealValidFlag == False):
+                print("Invalid MealID, please try again.")
+        
+        cursor.execute("SELECT * FROM Drink WHERE BIN = ?;", (BIN,))
+        drink = cursor.fetchall()
+        print("\nDrink Options:")
+        print("BIN\tDrinkID\tType\tPrice\tDrinkName\tSpecialCuisine")
+        for row in drink:
+            for attribute in row:
+                print(attribute, end="\t")
+            print()
+        DrinkValidFlag = False
+        DrinkID = None
+        while(DrinkValidFlag == False):
+            DrinkID = int(input("Enter DrinkID:").strip())
+            for row in drink:
+                if(row[1] == DrinkID):
+                    DrinkValidFlag = True
+                    break
+            if(DrinkValidFlag == False):
+                print("Invalid DrinkID, please try again.")
+        
+        cursor.execute("SELECT * FROM Tables WHERE BIN = ?;", (BIN,))
+        table = cursor.fetchall()
+        print("\nTable Options:")
+        print("BIN\tTable_Number\tSeatQuantity\tTableType\tprice")
+        for row in table:
+            for attribute in row:
+                print(attribute, end="\t")
+            print()
+        TableValidFlag = False
+        Table_Number = None
+        while(TableValidFlag == False):
+            Table_Number = int(input("Enter Table_Number:").strip())
+            for row in table:
+                if(row[1] == Table_Number):
+                    TableValidFlag = True
+                    break
+            if(TableValidFlag == False):
+                print("Invalid Table_Number, please try again.")
+        
+        cursor.execute("SELECT Price FROM Meal WHERE BIN = ? AND MealID = ?;", (BIN, MealID,))
+        MealPrice = cursor.fetchone()[0]
+        cursor.execute("SELECT Price FROM Drink WHERE BIN = ? AND DrinkID = ?;", (BIN, DrinkID,))
+        DrinkPrice = cursor.fetchone()[0]
+        cursor.execute("SELECT Price FROM Tables WHERE BIN = ? AND Table_Number = ?;", (BIN, Table_Number,))
+        cursor.execute("SELECT Price FROM Tables WHERE BIN = ? AND Table_Number = ?;", (BIN, Table_Number,))
+        TablePrice = cursor.fetchone()[0]
+        
+        Total_price = MealPrice + DrinkPrice + TablePrice
+        
+        cursor.execute("""
+        INSERT INTO Register (BIN, AttendeeEmail, MealID, DrinkID, Table_Number, Total_price)
+        VALUES (?, ?, ?, ?, ?, ?);
+        """, (BIN, logged_email, MealID, DrinkID, Table_Number, Total_price))
+        
+        conn.commit()
+        conn.close()
+        
+        return "Registered Banquet successfully!"
+    except sqlite3.IntegrityError:
+        return "Error: You are already registered in this Banquet."
+    except Exception as e:
+        return f"An error occurred: {e}"
 #########################################################################################
 logged_email=None
 
@@ -195,10 +463,10 @@ while(True):
         print(msg)
         while(logged_email!=None):
             print("\nAttendee Options:")
-            print("2. List Banquets")
-            print("3. Register")
-            print("4. Update personal data")
-            print("5. Show personal data")
+            print("1. List Banquets")
+            print("2. Register")
+            print("3. Update personal data")
+            print("4. Show personal data")
             print("0. Quit")
             opt = int(input("Choose an option: "))
             if(opt==0):
@@ -206,13 +474,17 @@ while(True):
                 print("You succesfully logged out from account.")
                 break
             elif(opt==1):
-                print("Create staff")
+                print("Listing Banquets...")
+                listBanquets()
             elif(opt==2):
-                print("create a banquet")
-            elif(opt==4):
+                print("Registering...")
+                AttendeeRegisterBanquet()
+            elif(opt==3):
+                print("Updating personal info...")
                 msg=updatePersonalData()
                 print(msg)
-            elif(opt==5):
+            elif(opt==4):
+                print("Showing personal info...")
                 showPersonalData()
             else:
                 print("Try again!")
