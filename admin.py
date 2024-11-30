@@ -3,7 +3,9 @@ import sqlite3;
 import re
 import hashlib
 import random
+import openpyxl
 
+REPORT_PATH="BMSReport.xlsx"
 DB_PATH="BMS.db"
 
 def isValidEmail(email):
@@ -208,9 +210,9 @@ def create_tables_for_banquet(BIN):
 
             # Validate table type
             table_type = ""
-            while table_type not in ["Special", "VIP", "Simple"]:
+            while table_type not in ["Special", "Simple"]:
                 table_type = input("Enter table type (Special, VIP, Simple): ").strip().capitalize()
-                if table_type not in ["Special", "VIP", "Simple"]:
+                if table_type not in ["Special", "Simple"]:
                     print("Invalid table type. Please choose 'Special', 'VIP', or 'Simple'.")
 
             price = float(input("Enter price: ").strip())
@@ -481,16 +483,16 @@ def update_meals(banquet_id):
         params = []
         
         if meal_type:
-            update_fields.append("type = ?")
+            update_fields.append("Type = ?")
             params.append(meal_type)
         if dish_name:
-            update_fields.append("dish_name = ?")
+            update_fields.append("DishName = ?")
             params.append(dish_name)
         if price:
-            update_fields.append("price = ?")
+            update_fields.append("Price = ?")
             params.append(float(price))
         if special_cuisine:
-            update_fields.append("special_cuisine = ?")
+            update_fields.append("SpecialCuisine = ?")
             params.append(special_cuisine)
         
         if update_fields:
@@ -498,12 +500,13 @@ def update_meals(banquet_id):
             cursor.execute(f'''
                 UPDATE Meal
                 SET {', '.join(update_fields)}
-                WHERE banquet_id = ? AND meal_id = ?
+                WHERE BIN = ? AND MealID = ?
             ''', (banquet_id, *params))
             conn.commit()
             print(f"Meal ID {meal_id} updated successfully.")
         else:
             print("No updates made for this meal.")
+        cursor = conn.close()
 
 # Function to update drinks for a banquet
 def update_drinks(banquet_id):
@@ -524,16 +527,16 @@ def update_drinks(banquet_id):
         params = []
         
         if drink_type:
-            update_fields.append("type = ?")
+            update_fields.append("Type = ?")
             params.append(drink_type)
         if drink_name:
-            update_fields.append("drink_name = ?")
+            update_fields.append("DrinkName = ?")
             params.append(drink_name)
         if price:
-            update_fields.append("price = ?")
+            update_fields.append("Price = ?")
             params.append(float(price))
         if special_cuisine:
-            update_fields.append("special_cuisine = ?")
+            update_fields.append("SpecialCuisine = ?")
             params.append(special_cuisine)
         
         if update_fields:
@@ -541,12 +544,13 @@ def update_drinks(banquet_id):
             cursor.execute(f'''
                 UPDATE Drink
                 SET {', '.join(update_fields)}
-                WHERE banquet_id = ? AND drink_id = ?
+                WHERE BIN = ? AND DrinkID = ?
             ''', (banquet_id, *params))
             conn.commit()
             print(f"Drink ID {drink_id} updated successfully.")
         else:
             print("No updates made for this drink.")
+        cursor = conn.close()
 
 # Function to update tables for a banquet
 def update_tables(banquet_id):
@@ -560,32 +564,205 @@ def update_tables(banquet_id):
         print(f"\nUpdating Table Number: {table_number}")
         table_type = input("Enter new table type (leave blank to keep current): ")
         price = input("Enter new price (leave blank to keep current): ")
-        seat_number = input("Enter new seat number (leave blank to keep current): ")
         
         update_fields = []
         params = []
         
         if table_type:
-            update_fields.append("type = ?")
+            update_fields.append("Type = ?")
             params.append(table_type)
         if price:
-            update_fields.append("price = ?")
+            update_fields.append("Price = ?")
             params.append(float(price))
-        if seat_number:
-            update_fields.append("seat_number = ?")
-            params.append(int(seat_number))
         
         if update_fields:
             params.append(table_number)
             cursor.execute(f'''
                 UPDATE SeatingTable
                 SET {', '.join(update_fields)}
-                WHERE banquet_id = ? AND seat_number = ?
+                WHERE BIN = ? AND TableNumber = ?
             ''', (banquet_id, *params))
             conn.commit()
             print(f"Table Number {table_number} updated successfully.")
         else:
             print("No updates made for this table.")
+        cursor = conn.close()
+
+def listBanquets():
+    while(True):
+        opt=int(input("\nMenu of List or Search for Banquets\nOptions:\n1. Listing Available Banquets\n2. Search Available Banquets \n0. Return to main menu\n"))
+    
+        if(opt==0):
+            return
+        elif(opt==1):
+            listAvaBanquet()
+        elif(opt==2):
+            searchAvaBanquet()
+        else:
+            print("Try again!")
+            
+
+#attendee get a list of available banquets, registered or not     
+def listAvaBanquet():
+    try:
+        t = True      
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM Banquet WHERE Available = ?;", (t,))
+        availables = cursor.fetchall()       
+        conn.close()
+        
+        if availables:
+            print(f"------------------------------------\nListing Available Banquets\nAvailable Banquet:")
+            for available in availables:
+                binNo, banqName, datetime, quota, ava, location, address, staff_fname, staff_lname = available
+                print(f"BIN: {binNo}, Banquet Name: {banqName}, Date & Time: {datetime}, "
+                      f"Location: {location}, Address: {address}, Quota: {quota}, "
+                      f"Staff: {staff_fname} {staff_lname}")
+                
+        else:
+            print("No available banquet now, you may check again later.")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        conn.close()
+
+#attendee search for a list of available banquets, registered or not         
+def searchAvaBanquet():
+    crit = int(input("------------------------------------\nSearch Available Banquets\nSearch options:\n1. Search by date\n2. Search by banquet name\n0. Return to Search Banquets\n"))
+    whereWhat = ""
+    inp = ""
+    if(crit==0):
+        return
+    elif(crit==1):
+        inp = input("Enter Date: ")
+        whereWhat = "DateTime"
+    elif(crit==2):
+        inp = input("Enter Banquet Name: ")
+        whereWhat = "Name"
+    else:
+        print("Try again!")
+           
+    try:
+        t = True      
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM Banquet WHERE Available = ? AND {} LIKE ?;".format(whereWhat), (t, f'%{inp}%'))
+        availables = cursor.fetchall()       
+        conn.close()
+        
+        if availables:
+            print(f"------------------------------------\nAvailable Banquet Found!:")
+            for available in availables:
+                binNo, banqName, datetime, quota, ava, location, address = available
+                print(f"BIN: {binNo}, Banquet Name: {banqName}, Date & Time: {datetime}, Location: {location}, Address: {address}, Quota: {quota}")
+                
+        else:
+            print("No available banquet now, you may check again later.")
+
+    except Exception as e:
+        print(f"An error occurred: {e}") 
+    finally:
+        conn.close()
+
+
+def GenerateReport():
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        reportWorkbook = openpyxl.load_workbook(REPORT_PATH)
+        reportWorksheet = reportWorkbook['Sheet1']
+
+        year = input("Enter year:").strip()
+        reportWorksheet["J1"] = year
+
+        # Query for monthly banquet count
+        for i in range(12):
+            cursor.execute(
+                "SELECT COUNT(*) FROM Banquet WHERE STRFTIME('%m-%Y', DateTime) = ?;",
+                (str(i + 1).zfill(2) + "-" + year,)
+            )
+            reportWorksheet["K" + str(i + 1)] = cursor.fetchone()[0]  # Use fetchone() and extract the value
+
+        # Query for previous year's banquet count
+        cursor.execute(
+            "SELECT COUNT(*) FROM Banquet WHERE STRFTIME('%Y', DateTime) = ?;",
+            (str(int(year) - 1),)
+        )
+        reportWorksheet["K17"] = cursor.fetchone()[0]
+
+        # Query for total attendee count
+        cursor.execute("SELECT COUNT(*) FROM Attendee")
+        TotalAttendeeCount = cursor.fetchone()[0]
+
+        # Query for attendee types
+        cursor.execute(
+            "SELECT AttendeeType, COUNT(AttendeeType) FROM Attendee GROUP BY AttendeeType ORDER BY COUNT(AttendeeType) DESC;"
+        )
+        AttendeeType = cursor.fetchall()
+        TypeCount = 0
+        for i in range(min(4, len(AttendeeType))):  # Prevent index out-of-range errors
+            reportWorksheet["M" + str(i + 1)] = AttendeeType[i][0]
+            reportWorksheet["N" + str(i + 1)] = str(int(AttendeeType[i][1]) / TotalAttendeeCount)
+            TypeCount += int(AttendeeType[i][1])
+
+        reportWorksheet["N5"] = str(TypeCount / TotalAttendeeCount)
+
+        # Query for monthly total price
+        for i in range(12):
+            cursor.execute(
+                "SELECT SUM(R.Total_price) FROM Register R, Banquet B WHERE R.BIN = B.BIN AND STRFTIME('%m-%Y', B.DateTime) = ?;",
+                (str(i + 1).zfill(2) + "-" + year,)
+            )
+            total_price = cursor.fetchone()[0]
+            reportWorksheet["P" + str(i + 1)] = total_price if total_price is not None else 0  # Handle NULL values
+
+        # Query for total price in the previous year
+        cursor.execute(
+            "SELECT SUM(R.Total_price) FROM Register R, Banquet B WHERE R.BIN = B.BIN AND STRFTIME('%Y', B.DateTime) = ?;",
+            (str(int(year) - 1),)
+        )
+        total_price_last_year = cursor.fetchone()[0]
+        reportWorksheet["P18"] = total_price_last_year if total_price_last_year is not None else 0
+
+        # Query for meal counts
+        cursor.execute(
+            "SELECT M.DishName, COUNT(M.DishName) FROM Meal M, Register R, Banquet B "
+            "WHERE R.BIN = M.BIN AND R.BIN = B.BIN AND STRFTIME('%Y', B.DateTime) = ? "
+            "GROUP BY M.DishName ORDER BY COUNT(M.DishName) DESC;",
+            (year,)
+        )
+        MealTable = cursor.fetchall()
+
+        # Query for drink counts
+        cursor.execute(
+            "SELECT D.DrinkName, COUNT(D.DrinkName) FROM Drink D, Register R, Banquet B "
+            "WHERE R.BIN = D.BIN AND R.BIN = B.BIN AND STRFTIME('%Y', B.DateTime) = ? "
+            "GROUP BY D.DrinkName ORDER BY COUNT(D.DrinkName) DESC;",
+            (year,)
+        )
+        DrinkTable = cursor.fetchall()
+
+        # Write meal and drink data to the worksheet
+        for i in range(min(3, len(MealTable))):  # Prevent index out-of-range errors
+            reportWorksheet["J" + str(37 + i)] = MealTable[i][0]
+            reportWorksheet["K" + str(37 + i)] = MealTable[i][1]
+
+        for i in range(min(3, len(DrinkTable))):  # Prevent index out-of-range errors
+            reportWorksheet["J" + str(42 + i)] = DrinkTable[i][0]
+            reportWorksheet["K" + str(42 + i)] = DrinkTable[i][1]
+
+        conn.commit()
+        conn.close()
+
+        reportWorkbook.save(year + REPORT_PATH)
+        reportWorkbook.close()
+
+        return "Report generated successfully!"
+    except Exception as e:
+        return f"An error occurred: {e}"
 
 #########################################################################################
 logged_email=None
@@ -612,6 +789,8 @@ while(True):
             print("7. Update Tables")
             print("8. Update Meals")
             print("9. Update Drinks")
+            print("10. List Banquets")
+            print("11. Generate Report")
             print("0. Quit")
             opt = int(input("Choose an option: "))
             if(opt==0):
@@ -656,6 +835,32 @@ while(True):
                 print("\nRegister Attendee to Banquet...")
                 AdminRegisterBanquet()
 
+            elif opt == 7:
+                print("\nUpdating Tables...")
+                BIN = input("Enter the BIN of the banquet to update tables: ").strip()
+                if not bin_exists(BIN):
+                    print(f"Error: BIN {BIN} does not exist. Please enter a valid BIN.")
+                    continue
+                update_tables(BIN)
+            elif opt == 8:
+                print("\nUpdating Meals...")
+                BIN = input("Enter the BIN of the banquet to update meals: ").strip()
+                if not bin_exists(BIN):
+                    print(f"Error: BIN {BIN} does not exist. Please enter a valid BIN.")
+                    continue
+                update_meals(BIN)
+            elif opt == 9:
+                print("\nUpdating Drinks...")
+                BIN = input("Enter the BIN of the banquet to update drinks: ").strip()
+                if not bin_exists(BIN):
+                    print(f"Error: BIN {BIN} does not exist. Please enter a valid BIN.")
+                    continue
+                update_drinks(BIN)
+            elif opt ==10:
+                listBanquets()
+
+            elif opt == 11:
+                print(GenerateReport())
             else:
                 print("Try again!")
     elif(opt==0):
